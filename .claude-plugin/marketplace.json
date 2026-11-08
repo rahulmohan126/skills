@@ -1,0 +1,22 @@
+{
+  "name": "rahul-skills",
+  "owner": {
+    "name": "Rahul Mohan"
+  },
+  "metadata": {
+    "description": "Agent skills for Claude Code by Rahul Mohan.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "prod-readiness",
+      "description": "Production-readiness audit for React apps (Next.js, Astro, Vite): ~50 launch, SEO and security checks with a pass/fail report and offered fixes.",
+      "version": "1.0.0",
+      "source": "./",
+      "strict": false,
+      "skills": ["./skills/prod-readiness"],
+      "keywords": ["react", "nextjs", "astro", "seo", "security", "launch-checklist"],
+      "category": "development"
+    }
+  ]
+}
