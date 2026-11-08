@@ -50,7 +50,7 @@ PUBLIC_BY_DESIGN = {"google_api_key"}
 
 CLIENT_ENV_PREFIXES = ("NEXT_PUBLIC_", "PUBLIC_", "VITE_", "REACT_APP_", "EXPO_PUBLIC_", "GATSBY_")
 SECRETY_NAME = re.compile(r"(?i)(SECRET|SERVICE_ROLE|PRIVATE|PASSWORD|_SK\b|SK_|TOKEN|OPENAI|ANTHROPIC|STRIPE_SECRET|DATABASE_URL|ADMIN)")
-SAFE_PUBLIC_NAME = re.compile(r"(?i)(ANON_KEY|PUBLISHABLE|_PK\b|PK_|SITE_URL|APP_URL|POSTHOG|SENTRY_DSN|GA_|GTM|MEASUREMENT_ID|FIREBASE_API_KEY|PROJECT_ID|AUTH_DOMAIN|STORAGE_BUCKET|MESSAGING_SENDER_ID|APP_ID|MAPS)")
+SAFE_PUBLIC_NAME = re.compile(r"(?i)(ANON_KEY|PUBLISHABLE|BEACON|SITE_KEY|ANALYTICS|PLAUSIBLE|UMAMI|CLARITY|PIXEL|_PK\b|PK_|SITE_URL|APP_URL|POSTHOG|SENTRY_DSN|GA_|GTM|MEASUREMENT_ID|FIREBASE_API_KEY|PROJECT_ID|AUTH_DOMAIN|STORAGE_BUCKET|MESSAGING_SENDER_ID|APP_ID|MAPS)")
 
 AUTH_CALL = re.compile(
     r"\b(auth\(\)|getServerSession|getSession\(|currentUser\(|getAuth\(|auth\.getUser|getUser\(|"
@@ -181,6 +181,13 @@ def detect(root, pkg, files):
         pm = "npm (no lockfile!)"
 
     return framework, version, backend, auth, pm, deps
+
+
+TEST_PATH = re.compile(r"(^|/)(tests?|__tests__|e2e|cypress|playwright|mocks?|fixtures|evals)/|\.(test|spec|stories)\.[cm]?[jt]sx?$")
+
+
+def is_test(path):
+    return bool(TEST_PATH.search(path))
 
 
 def is_client_file(path_rel, text, framework):
@@ -397,6 +404,10 @@ def scan(root, history=True):
         rx = re.compile(pat, re.I if key in ("token_in_localstorage",) else 0)
         R.setdefault(key, [])
         for path, t in texts.items():
+            if is_test(path):
+                continue
+            if key == "mass_assignment" and is_client_file(path, t, framework):
+                continue
             if Path(path).suffix not in CODE_EXT and not (key == "http_urls" and Path(path).suffix in {".json", ".toml", ".html"}):
                 continue
             if key == "http_urls" and path.endswith(("package.json", "tsconfig.json")):
@@ -454,11 +465,16 @@ def scan(root, history=True):
 
     langs = []
     for path, t in texts.items():
-        if re.search(r"(^|/)(index\.html|app/layout\.[jt]sx?|src/app/layout\.[jt]sx?|pages/_document\.[jt]sx?|src/pages/_document\.[jt]sx?|src/layouts/.*\.astro|app/root\.[jt]sx?)$", path):
-            m = re.search(r"<html[^>]*>", t)
-            if m:
-                lm = re.search(r"lang=\{?['\"]?([\w-]*)", m.group(0))
-                langs.append({"file": path, "html_tag": m.group(0)[:120], "lang": lm.group(1) if lm else None})
+        if re.search(r"(^|/)(index\.html|(src/)?app/(.*/)?(layout|global-not-found)\.[jt]sx?|(src/)?pages/_document\.[jt]sx?|src/layouts/.*\.astro|app/root\.[jt]sx?)$", path):
+            # real opening tags only: `<html` followed by whitespace/attrs (skips "<html lang>" in comments)
+            for m in re.finditer(r"<html(\s+[^<]*?)?>", t, re.S):
+                tag = m.group(0)
+                lm = re.search(r"\blang=(\{[^}]+\}|['\"][^'\"]*['\"])", tag)
+                if not tag.strip("<>").strip() == "html lang" and (lm or "lang" not in tag):
+                    val = lm.group(1).strip("'\"") if lm else None
+                    langs.append({"file": path, "line": t.count("\n", 0, m.start()) + 1,
+                                  "lang": val, "dynamic": bool(val and val.startswith("{"))})
+                    break
     R["html_lang"] = langs
 
     pub = [n for n in texts] + [rel(f, root) for f in files]
@@ -472,7 +488,8 @@ def scan(root, history=True):
     R["sitemap"] = has("public/sitemap.xml", "app/sitemap.ts", "app/sitemap.js", "src/app/sitemap.ts", "next-sitemap.config.js", "next-sitemap.config.cjs") + \
         (["@astrojs/sitemap"] if "@astrojs/sitemap" in deps else []) + (["next-sitemap"] if "next-sitemap" in deps else [])
     R["llms_txt"] = has("public/llms.txt", "app/llms.txt/route.ts", "src/app/llms.txt/route.ts", "src/pages/llms.txt.ts")
-    R["not_found_page"] = has("app/not-found.tsx", "app/not-found.jsx", "src/app/not-found.tsx", "pages/404.tsx", "pages/404.jsx", "src/pages/404.tsx", "src/pages/404.astro", "app/routes/$.tsx")
+    R["not_found_page"] = sorted(p for p in pubset if re.search(r"(^|/)(not-found|global-not-found)\.[jt]sx?$|(^|/)404\.(astro|[jt]sx?|html|md)$|app/routes/\$\.[jt]sx?$", p))
+    _unused_nf = has("app/not-found.tsx", "app/not-found.jsx", "src/app/not-found.tsx", "pages/404.tsx", "pages/404.jsx", "src/pages/404.tsx", "src/pages/404.astro", "app/routes/$.tsx")
     R["og_image_files"] = [p for p in pubset if re.search(r"(opengraph-image|twitter-image|og[-_]?image|og\.(png|jpg))", p)]
 
     leftovers = []
@@ -487,9 +504,9 @@ def scan(root, history=True):
 
     alt = []
     for path, t in texts.items():
-        if Path(path).suffix not in CODE_EXT | {".html", ".mdx"}:
+        if Path(path).suffix not in CODE_EXT | {".html", ".mdx"} or is_test(path):
             continue
-        for m in re.finditer(r"<(img|Image)\b([^>]*?)/?>", t, re.S):
+        for m in re.finditer(r"<(img|Image)(\s+[^<>]*?(?:\{[^}]*\}[^<>]*?)*)/?>", t, re.S):
             if not re.search(r"\balt\s*=", m.group(2)) and "{...props}" not in m.group(2):
                 alt.append({"file": path, "line": t.count("\n", 0, m.start()) + 1})
     R["img_missing_alt"] = alt[:HIT_CAP]
@@ -530,6 +547,57 @@ def scan(root, history=True):
     hosts = r"[\w-]+\.(vercel\.app|netlify\.app|pages\.dev|onrender\.com|herokuapp\.com|github\.io|fly\.dev|up\.railway\.app|railway\.app|web\.app|firebaseapp\.com|amplifyapp\.com|surge\.sh)"
     R["platform_hostname_refs"] = [{"file": p, "host": m.group(0)} for p, t in texts.items()
                                    if not p.endswith(("lock", ".lock", "package-lock.json")) for m in [re.search(hosts, t)] if m][:20]
+
+    # ---------- how the build is served ----------
+    m = re.search(r"output\s*:\s*['\"](export|standalone)['\"]", nc)
+    R["next_output_mode"] = m.group(1) if m else ("server" if framework.startswith("nextjs") else None)
+    am = next((t for p, t in texts.items() if re.match(r"astro\.config\.[mc]?[jt]s$", p)), "")
+    if am:
+        om = re.search(r"output\s*:\s*['\"](static|server|hybrid)['\"]", am)
+        R["astro_output_mode"] = om.group(1) if om else "static"
+        R["astro_adapter"] = (re.search(r"@astrojs/(node|vercel|netlify|cloudflare)", am) or [None, None])[1]
+    R["static_headers_file"] = [p for p in ("public/_headers", "static/_headers") if (root / p).exists()]
+
+    # ---------- build output (only if a build already exists; never builds) ----------
+    builds = {}
+    for d in ("out", "dist", "build", ".next/static", ".next/standalone", ".output/public"):
+        bd = root / d
+        if not bd.is_dir():
+            continue
+        maps, refs, html, js = [], [], 0, 0
+        for dp, dns, fns in os.walk(bd):
+            dns[:] = [x for x in dns if x != "node_modules"]
+            for fn in fns:
+                fp = Path(dp) / fn
+                if fn.endswith(".map"):
+                    maps.append(rel(fp, root))
+                elif fn.endswith((".js", ".css", ".mjs")):
+                    js += 1
+                    try:
+                        with open(fp, "rb") as fh:
+                            fh.seek(max(0, fp.stat().st_size - 600))
+                            tail = fh.read()
+                            if b"sourceMappingURL=" in tail and b"sourceMappingURL=data:" not in tail:
+                                refs.append(rel(fp, root))
+                    except OSError:
+                        pass
+                elif fn.endswith(".html"):
+                    html += 1
+        newest = max((f.stat().st_mtime for f in bd.rglob("*") if f.is_file()), default=0)
+        builds[d] = {"html_files": html, "js_css_files": js, "map_files": len(maps), "map_sample": maps[:5],
+                     "files_referencing_sourcemap": len(refs), "ref_sample": refs[:5], "newest_mtime": int(newest)}
+    R["build_output"] = builds or "no build output found (run the build to check source maps in shipped files)"
+
+    # ---------- git state: is what's deployed the code being audited? ----------
+    if is_git:
+        _, head = run(["git", "rev-parse", "--short", "HEAD"], root)
+        _, branch = run(["git", "rev-parse", "--abbrev-ref", "HEAD"], root)
+        _, dirty = run(["git", "status", "--porcelain"], root)
+        code, ahead = run(["git", "rev-list", "--count", "@{u}..HEAD"], root)
+        _, last = run(["git", "log", "-1", "--format=%ci"], root)
+        R["git_state"] = {"head": head.strip(), "branch": branch.strip(), "last_commit": last.strip(),
+                          "uncommitted_files": len([l for l in dirty.splitlines() if l.strip()]),
+                          "commits_ahead_of_upstream": int(ahead.strip()) if code == 0 and ahead.strip().isdigit() else "no upstream"}
     return R
 
 

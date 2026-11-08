@@ -2,3 +2,5 @@
 # skill-creator test runs and claude plugin eval output
 *-workspace/
 skills/*/evals/results/
+__pycache__/__pycache__/
+*.pyc

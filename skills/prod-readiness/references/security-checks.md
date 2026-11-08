@@ -124,12 +124,15 @@ Production responses include:
 - `Referrer-Policy: strict-origin-when-cross-origin` (or stricter)
 - `Permissions-Policy` restricting unused features (camera, microphone, geolocation) — WARN if absent
 - No `X-Powered-By`, no verbose `Server` version.
-- Live: `live.security_headers` (present/missing/value per header) — authoritative. Source: `src.security_headers_config` (next.config `headers()`, middleware, `vercel.json`, `netlify.toml`/`_headers`, `astro.config` / adapter config) — use when there's no live URL.
+- Live: `live.security_headers` (present/missing/value per header, plus `frame_protection`), `live.hsts`, `live.leaky_headers` — authoritative. `--serve-dir` applies a `_headers` file the way Cloudflare Pages/Netlify do, so it reflects that config but not anything the host adds.
+- A `Content-Security-Policy-Report-Only` header counts as "CSP in progress" → WARN, not FAIL. When recommending a CSP, ship it report-only first: a strict policy breaks inline styles/scripts and third-party tags.
+- HSTS `preload`: only meaningful once submitted at hstspreload.org, and submitting commits **every subdomain** to HTTPS. If `preload` is present, mention this; drop the token if that's not intended.
+- `_headers` / `next.config` `headers()` often don't cover everything — e.g. `_headers` applies to static assets, not responses from a Worker or API function. Note which responses the config covers. Source: `src.security_headers_config` (next.config `headers()`, middleware, `vercel.json`, `netlify.toml`/`_headers`, `astro.config` / adapter config) — use when there's no live URL.
 - Also covers L25.
 
 ### S19 Force HTTPS — [blocker]
 All traffic is HTTPS: `http://` redirects (301/308) to `https://`, HSTS set (S18), no mixed content, valid certificate, and no hardcoded `http://` API/asset URLs in source.
-- Live: `live.redirects.http_to_https`, `live.tls_ok`, `live.pages[].mixed_content`. Source: `src.http_urls` (non-localhost `http://` URLs in code/config).
+- Live: `live.redirects.http_to_https.ok`, `live.pages[].insecure_urls`. A certificate problem surfaces as a fetch error on the https origin. Source: `src.http_urls` (non-localhost `http://` URLs in code/config).
 - Also covers L32.
 
 ### S20 Scan dependencies — [high]
