@@ -7,14 +7,14 @@ A collection of [Agent Skills](https://docs.claude.com/en/docs/claude-code/skill
 Add this repo as a marketplace, then install any skill by name:
 
 ```
-/plugin marketplace add <github-user>/skills
+/plugin marketplace add rahulmohan126/skills
 /plugin install prod-readiness@rahul-skills
 ```
 
 Or from a terminal:
 
 ```bash
-claude plugin marketplace add <github-user>/skills
+claude plugin marketplace add rahulmohan126/skills
 claude plugin install prod-readiness@rahul-skills
 ```
 

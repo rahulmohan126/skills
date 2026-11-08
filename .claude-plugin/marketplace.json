@@ -12,10 +12,25 @@
       "name": "prod-readiness",
       "description": "Production-readiness audit for React apps (Next.js, Astro, Vite): ~50 launch, SEO and security checks with a pass/fail report and offered fixes.",
       "version": "1.0.1",
+      "author": {
+        "name": "Rahul Mohan",
+        "url": "https://github.com/rahulmohan126"
+      },
+      "homepage": "https://github.com/rahulmohan126/skills/tree/main/skills/prod-readiness",
+      "repository": "https://github.com/rahulmohan126/skills",
       "source": "./",
       "strict": false,
-      "skills": ["./skills/prod-readiness"],
-      "keywords": ["react", "nextjs", "astro", "seo", "security", "launch-checklist"],
+      "skills": [
+        "./skills/prod-readiness"
+      ],
+      "keywords": [
+        "react",
+        "nextjs",
+        "astro",
+        "seo",
+        "security",
+        "launch-checklist"
+      ],
       "category": "development"
     }
   ]
