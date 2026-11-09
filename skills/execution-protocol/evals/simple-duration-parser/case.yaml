@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: simple-duration-parser
+expected_outcome: |
+  A behavior-level plan file without code snippets exists, with numbered success criteria. Unit tests for parse_duration were written and run (failing) before parse_duration was implemented. The implementation passes all tests, including edge cases such as malformed input, and the existing format_duration tests still pass.
+context:
+  scaffold_script: place-files.sh

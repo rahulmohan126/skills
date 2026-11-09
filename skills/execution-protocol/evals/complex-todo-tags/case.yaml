@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: complex-todo-tags
+expected_outcome: |
+  A behavior-level plan with success criteria mapped to unit, integration and e2e tests. Tests covering storage with real SQLite, CLI end-to-end through a subprocess, and upgrading a pre-existing database were written before implementation. Tags work end to end, all tests pass, and the handoff reports results per criterion plus any test changes.
+context:
+  scaffold_script: place-files.sh

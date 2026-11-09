@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: execute-existing-plan
+expected_outcome: |
+  The existing plan is reviewed and completed with numbered success criteria, and its code snippet is treated as a suggestion rather than a requirement. Tests for the 429 response, the Retry-After header, the /health exemption, per-client isolation and window reset (using a controllable clock, not real sleeps) are written before src/rateLimit.js exists. All tests pass via npm test.
+context:
+  scaffold_script: place-files.sh
