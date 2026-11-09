@@ -9,6 +9,7 @@ Add this repo as a marketplace, then install any skill by name:
 ```
 /plugin marketplace add rahulmohan126/skills
 /plugin install prod-readiness@rahul-skills
+/plugin install execution-protocol@rahul-skills
 ```
 
 Or from a terminal:
@@ -16,6 +17,7 @@ Or from a terminal:
 ```bash
 claude plugin marketplace add rahulmohan126/skills
 claude plugin install prod-readiness@rahul-skills
+claude plugin install execution-protocol@rahul-skills
 ```
 
 Once installed, skills trigger on their own when a request matches. You can also ask for one by name.
@@ -25,6 +27,7 @@ Once installed, skills trigger on their own when a request matches. You can also
 | Skill | What it does |
 |---|---|
 | [prod-readiness](skills/prod-readiness/) | Checks whether a React app (Next.js, Astro, Vite) is ready for production. Runs ~50 launch, SEO and security checks against the source and, optionally, a live URL. Writes a pass/fail report with evidence and offers to apply fixes. |
+| [execution-protocol](skills/execution-protocol/) | A plan → tests → implement → verify loop for building features and fixing bugs. Writes a behavior-level plan with testable success criteria, writes tests from the plan before any implementation, then implements and loops until everything passes. Complex plans split test writing and implementation across separate subagents. |
 
 <!-- Add a row here for each new skill. -->
 
